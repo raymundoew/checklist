@@ -3,106 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Check-list Diario</title>
+    <title>Control de Comedor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .btn-active-si { background-color: #10b981 !important; color: white; }
-        .btn-active-no { background-color: #ef4444 !important; color: white; }
+        .btn-si.active { background-color: #10b981; color: white; border-color: #10b981; }
+        .btn-no.active { background-color: #ef4444; color: white; border-color: #ef4444; }
+        .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     </style>
 </head>
-<body class="bg-slate-50 font-sans p-4">
-    <div class="max-w-md mx-auto bg-white rounded-3xl shadow-lg p-6">
-        <h1 class="text-2xl font-bold text-slate-800 mb-2">Check-list Diario</h1>
-        <p id="fecha" class="text-sm text-slate-500 mb-6"></p>
-
-        <div class="mb-6 flex gap-2">
-            <input type="text" id="nuevoNombre" placeholder="Añadir persona..." class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-            <button onclick="agregarPersona()" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold">+</button>
+<body class="bg-slate-100 p-2 sm:p-6 font-sans">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
+        <div class="bg-slate-800 p-6 text-white">
+            <h1 class="text-xl font-bold uppercase tracking-wider">Control Diario de Comidas</h1>
+            <p id="fechaDisplay" class="text-slate-400 text-sm"></p>
         </div>
 
-        <div id="listaContenedor" class="space-y-4">
-            </div>
+        <div class="table-responsive">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 border-b text-slate-700 uppercase text-xs">
+                        <th class="p-4">Nombre Completo</th>
+                        <th class="p-4 text-center">Comida</th>
+                        <th class="p-4 text-center">Asistencia</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaCuerpo" class="divide-y divide-slate-100">
+                    </tbody>
+            </table>
+        </div>
 
-        <button onclick="enviarDatos()" id="btnEnviar" class="w-full mt-8 bg-slate-900 text-white py-4 rounded-2xl font-bold text-lg hover:bg-slate-800 transition-all">
-            Guardar en Google Sheets
-        </button>
+        <div class="p-6 bg-slate-50">
+            <button onclick="enviarDatos()" id="btnEnviar" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95">
+                GUARDAR REGISTRO DEL DÍA
+            </button>
+        </div>
     </div>
 
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzaHRn6WG8ZJjXicyNxfPdX-turSuB8bpWB3-qEH2_MGuVkxH3baST_ITCG3QRYoCzy/exec";
-        let personas = JSON.parse(localStorage.getItem('personas')) || ["Persona 1", "Persona 2", "Persona 3"];
+        const personas = [
+            "ALANIA CARRION, JAYRO",
+            "ASPARREN ALANIA, CRISTIAN ALEXIS",
+            "CARDENAS ROJAS, YHADER ROGELIO",
+            "LEONARDO RIVERA, BRYAN ANTHONY",
+            "QUINCHORI PARDO, JOSELITO"
+        ];
+        const comidas = ["DESAYUNO", "ALMUERZO", "CENA"];
         let respuestas = {};
 
-        function renderizar() {
-            const container = document.getElementById('listaContenedor');
-            container.innerHTML = '';
-            personas.forEach((p, index) => {
-                container.innerHTML += `
-                    <div class="flex items-center justify-between p-3 bg-slate-100 rounded-2xl">
-                        <span class="font-medium text-slate-700">${p}</span>
-                        <div class="flex gap-2">
-                            <button onclick="setVoto('${p}', 'SI')" id="si-${p}" class="px-4 py-2 rounded-xl bg-white text-slate-400 font-bold border transition-all">SÍ</button>
-                            <button onclick="setVoto('${p}', 'NO')" id="no-${p}" class="px-4 py-2 rounded-xl bg-white text-slate-400 font-bold border transition-all">NO</button>
-                            <button onclick="eliminarPersona(${index})" class="ml-2 text-slate-300 hover:text-red-500">✕</button>
-                        </div>
-                    </div>
-                `;
+        function render() {
+            const tbody = document.getElementById('tablaCuerpo');
+            const fecha = new Date().toLocaleDateString('es-ES');
+            document.getElementById('fechaDisplay').innerText = `Fecha: ${fecha}`;
+
+            let html = "";
+            personas.forEach(p => {
+                comidas.forEach((c, index) => {
+                    html += `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="p-4 text-sm font-bold text-slate-700">${index === 0 ? p : ''}</td>
+                        <td class="p-4 text-center text-xs font-semibold text-slate-500">${c}</td>
+                        <td class="p-4 text-center">
+                            <div class="flex justify-center gap-2">
+                                <button onclick="votar('${p}','${c}','SI')" id="${p}-${c}-SI" class="btn-si border-2 border-slate-200 px-4 py-1 rounded-md text-xs font-bold transition-all">SI</button>
+                                <button onclick="votar('${p}','${c}','NO')" id="${p}-${c}-NO" class="btn-no border-2 border-slate-200 px-4 py-1 rounded-md text-xs font-bold transition-all">NO</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
             });
-            document.getElementById('fecha').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            tbody.innerHTML = html;
         }
 
-        function setVoto(nombre, valor) {
-            respuestas[nombre] = valor;
-            document.getElementById(`si-${nombre}`).className = valor === 'SI' ? 'px-4 py-2 rounded-xl btn-active-si font-bold shadow-md' : 'px-4 py-2 rounded-xl bg-white text-slate-400 font-bold border';
-            document.getElementById(`no-${nombre}`).className = valor === 'NO' ? 'px-4 py-2 rounded-xl btn-active-no font-bold shadow-md' : 'px-4 py-2 rounded-xl bg-white text-slate-400 font-bold border';
-        }
-
-        function agregarPersona() {
-            const input = document.getElementById('nuevoNombre');
-            if(input.value) {
-                personas.push(input.value);
-                localStorage.setItem('personas', JSON.stringify(personas));
-                input.value = '';
-                renderizar();
-            }
-        }
-
-        function eliminarPersona(index) {
-            personas.splice(index, 1);
-            localStorage.setItem('personas', JSON.stringify(personas));
-            renderizar();
+        function votar(p, c, val) {
+            const key = `${p}-${c}`;
+            respuestas[key] = val;
+            
+            document.getElementById(`${p}-${c}-SI`).classList.remove('active');
+            document.getElementById(`${p}-${c}-NO`).classList.remove('active');
+            document.getElementById(`${p}-${c}-${val}`).classList.add('active');
         }
 
         async function enviarDatos() {
-            if (Object.keys(respuestas).length < personas.length) {
-                alert("Por favor completa el check-list de todos.");
+            if (Object.keys(respuestas).length < (personas.length * comidas.length)) {
+                alert("⚠️ Por favor, completa todos los campos antes de guardar.");
                 return;
             }
 
             const btn = document.getElementById('btnEnviar');
-            btn.innerText = "Enviando...";
+            btn.innerText = "⏳ GUARDANDO...";
             btn.disabled = true;
 
-            const payload = personas.map(p => ({ nombre: p, estado: respuestas[p] }));
+            const payload = [];
+            const fechaHoy = new Date().toLocaleDateString('es-ES');
+            for (const key in respuestas) {
+                const [nombre, comida] = key.split('-');
+                payload.push({ fecha: fechaHoy, nombre, comida, estado: respuestas[key] });
+            }
 
             try {
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify(payload)
-                });
-                alert("¡Datos guardados con éxito!");
-                respuestas = {};
-                renderizar();
+                await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+                alert("✅ ¡Registro guardado con éxito!");
+                location.reload();
             } catch (e) {
-                alert("Error al enviar.");
-            } finally {
-                btn.innerText = "Guardar en Google Sheets";
+                alert("❌ Error de conexión. Intenta de nuevo.");
                 btn.disabled = false;
+                btn.innerText = "GUARDAR REGISTRO DEL DÍA";
             }
         }
 
-        renderizar();
+        render();
     </script>
 </body>
 </html>
