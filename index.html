@@ -3,41 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Asistencia Comedor</title>
+    <title>Control de Comedor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .btn-active { background-color: #1e293b !important; color: white !important; border-color: #1e293b !important; }
         .si-active { background-color: #10b981 !important; color: white !important; }
         .no-active { background-color: #ef4444 !important; color: white !important; }
+        .btn-bloqueado { opacity: 0.5; cursor: not-allowed; background-color: #94a3b8 !important; }
     </style>
 </head>
 <body class="bg-slate-100 p-4 font-sans">
     <div class="max-w-md mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden">
         
         <div class="bg-slate-800 p-6 text-white text-center">
-            <h1 class="text-xl font-bold tracking-tight">REGISTRO DE COMEDOR</h1>
+            <h1 class="text-xl font-bold tracking-tight uppercase">Registro de Comedor</h1>
             <p id="fechaDisplay" class="text-slate-400 text-xs mt-1 uppercase font-semibold"></p>
         </div>
 
         <div class="p-6">
-            <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Seleccionar Horario:</label>
+            <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Horario de Comida:</label>
             <div class="flex gap-2 mb-8">
-                <button onclick="cambiarComida('DESAYUNO')" id="opt-DESAYUNO" class="flex-1 py-3 rounded-xl border-2 text-xs font-bold transition-all">DESAYUNO</button>
-                <button onclick="cambiarComida('ALMUERZO')" id="opt-ALMUERZO" class="flex-1 py-3 rounded-xl border-2 text-xs font-bold transition-all">ALMUERZO</button>
-                <button onclick="cambiarComida('CENA')" id="opt-CENA" class="flex-1 py-3 rounded-xl border-2 text-xs font-bold transition-all">CENA</button>
+                <button onclick="cambiarComida('DESAYUNO')" id="opt-DESAYUNO" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-bold transition-all">DESAYUNO</button>
+                <button onclick="cambiarComida('ALMUERZO')" id="opt-ALMUERZO" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-bold transition-all">ALMUERZO</button>
+                <button onclick="cambiarComida('CENA')" id="opt-CENA" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-bold transition-all">CENA</button>
             </div>
 
-            <div id="listaPersonas" class="space-y-4">
-                </div>
+            <div id="listaPersonas" class="space-y-4"></div>
 
-            <button onclick="enviarDatos()" id="btnEnviar" class="w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all">
+            <button onclick="confirmarEnvio()" id="btnEnviar" class="w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all">
                 GUARDAR ASISTENCIA
             </button>
         </div>
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzaHRn6WG8ZJjXicyNxfPdX-turSuB8bpWB3-qEH2_MGuVkxH3baST_ITCG3QRYoCzy/exec"; // REEMPLAZA CON TU URL DE APPS SCRIPT
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzaHRn6WG8ZJjXicyNxfPdX-turSuB8bpWB3-qEH2_MGuVkxH3baST_ITCG3QRYoCzy/exec"; 
         const personas = [
             "ALANIA CARRION, JAYRO",
             "ASPARREN ALANIA, CRISTIAN ALEXIS",
@@ -46,8 +46,9 @@
             "QUINCHORI PARDO, JOSELITO"
         ];
         
-        let comidaSeleccionada = "ALMUERZO"; // Por defecto
+        let comidaSeleccionada = "ALMUERZO";
         let respuestas = {};
+        let horariosEnviados = []; // Aquí guardamos qué horarios ya se bloquearon
 
         function inicializar() {
             document.getElementById('fechaDisplay').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -57,49 +58,68 @@
         function cambiarComida(tipo) {
             comidaSeleccionada = tipo;
             
-            // Actualizar botones de comida
             ["DESAYUNO", "ALMUERZO", "CENA"].forEach(c => {
-                document.getElementById(`opt-${c}`).className = (c === tipo) 
-                    ? "flex-1 py-3 rounded-xl border-slate-800 btn-active text-xs font-bold shadow-md" 
-                    : "flex-1 py-3 rounded-xl border-slate-200 text-slate-400 text-xs font-bold bg-white";
+                const btn = document.getElementById(`opt-${c}`);
+                if (horariosEnviados.includes(c)) {
+                    btn.className = "flex-1 py-3 rounded-xl border-slate-300 btn-bloqueado text-white text-[10px] font-bold";
+                    btn.innerText = c + " ✓";
+                } else {
+                    btn.className = (c === tipo) 
+                        ? "flex-1 py-3 rounded-xl border-slate-800 btn-active text-[10px] font-bold shadow-md" 
+                        : "flex-1 py-3 rounded-xl border-slate-200 text-slate-400 text-[10px] font-bold bg-white";
+                    btn.innerText = c;
+                }
             });
 
-            // Limpiar y generar lista
             const contenedor = document.getElementById('listaPersonas');
             contenedor.innerHTML = "";
+            const bloqueado = horariosEnviados.includes(comidaSeleccionada);
             
             personas.forEach(p => {
                 const estadoPrevio = respuestas[`${p}-${tipo}`] || null;
                 contenedor.innerHTML += `
-                    <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 ${bloqueado ? 'opacity-60' : ''}">
                         <span class="text-sm font-bold text-slate-700 leading-tight pr-2">${p}</span>
                         <div class="flex gap-2">
-                            <button onclick="marcar('${p}', 'SI')" id="si-${p}" class="px-5 py-2 rounded-xl border-2 font-black text-xs transition-all ${estadoPrevio === 'SI' ? 'si-active' : 'bg-white text-slate-300'}">SÍ</button>
-                            <button onclick="marcar('${p}', 'NO')" id="no-${p}" class="px-5 py-2 rounded-xl border-2 font-black text-xs transition-all ${estadoPrevio === 'NO' ? 'no-active' : 'bg-white text-slate-300'}">NO</button>
+                            <button ${bloqueado ? 'disabled' : `onclick="marcar('${p}', 'SI')"`} id="si-${p}" class="px-5 py-2 rounded-xl border-2 font-black text-xs transition-all ${estadoPrevio === 'SI' ? 'si-active' : 'bg-white text-slate-300'}">SÍ</button>
+                            <button ${bloqueado ? 'disabled' : `onclick="marcar('${p}', 'NO')"`} id="no-${p}" class="px-5 py-2 rounded-xl border-2 font-black text-xs transition-all ${estadoPrevio === 'NO' ? 'no-active' : 'bg-white text-slate-300'}">NO</button>
                         </div>
                     </div>
                 `;
             });
+
+            const btnEnv = document.getElementById('btnEnviar');
+            if (bloqueado) {
+                btnEnv.innerText = "HORARIO YA ENVIADO";
+                btnEnv.disabled = true;
+                btnEnv.className = "w-full mt-10 bg-slate-400 text-white py-4 rounded-2xl font-bold text-lg cursor-not-allowed";
+            } else {
+                btnEnv.innerText = "GUARDAR ASISTENCIA";
+                btnEnv.disabled = false;
+                btnEnv.className = "w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all";
+            }
         }
 
         function marcar(persona, valor) {
             respuestas[`${persona}-${comidaSeleccionada}`] = valor;
-            
-            // Resetear y activar colores visuales
             document.getElementById(`si-${persona}`).className = (valor === 'SI') ? "px-5 py-2 rounded-xl font-black text-xs si-active shadow-md" : "px-5 py-2 rounded-xl border-2 bg-white text-slate-300 font-black text-xs";
             document.getElementById(`no-${persona}`).className = (valor === 'NO') ? "px-5 py-2 rounded-xl font-black text-xs no-active shadow-md" : "px-5 py-2 rounded-xl border-2 bg-white text-slate-300 font-black text-xs";
         }
 
-        async function enviarDatos() {
+        function confirmarEnvio() {
             const faltantes = personas.filter(p => !respuestas[`${p}-${comidaSeleccionada}`]);
-            
             if (faltantes.length > 0) {
-                alert("⚠️ Por favor completa la asistencia de todos para el " + comidaSeleccionada);
+                alert("⚠️ Debes marcar a todos antes de guardar.");
                 return;
             }
+            if (confirm(`¿Estás seguro de que deseas guardar el registro de ${comidaSeleccionada}? Una vez enviado no podrás modificarlo en esta sesión.`)) {
+                enviarDatos();
+            }
+        }
 
+        async function enviarDatos() {
             const btn = document.getElementById('btnEnviar');
-            btn.innerText = "ENVIANDO...";
+            btn.innerText = "GUARDANDO...";
             btn.disabled = true;
 
             const payload = personas.map(p => ({
@@ -110,15 +130,13 @@
 
             try {
                 await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                alert("✅ Registro de " + comidaSeleccionada + " guardado.");
-                // Limpiar solo los del horario enviado
-                personas.forEach(p => delete respuestas[`${p}-${comidaSeleccionada}`]);
+                alert("✅ Éxito: Registro de " + comidaSeleccionada + " guardado en el Sheets.");
+                horariosEnviados.push(comidaSeleccionada);
                 cambiarComida(comidaSeleccionada);
             } catch (e) {
-                alert("❌ Error de red.");
-            } finally {
-                btn.innerText = "GUARDAR ASISTENCIA";
+                alert("❌ Error de conexión.");
                 btn.disabled = false;
+                btn.innerText = "GUARDAR ASISTENCIA";
             }
         }
 
