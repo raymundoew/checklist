@@ -6,14 +6,12 @@
     <title>Control de Comedor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Estilos de botones activos y bloqueados */
         .btn-active { background-color: #1e293b !important; color: white !important; border-color: #1e293b !important; }
         .si-active { background-color: #10b981 !important; color: white !important; border-color: #10b981 !important; }
         .no-active { background-color: #ef4444 !important; color: white !important; border-color: #ef4444 !important; }
         .btn-bloqueado { opacity: 0.5; cursor: not-allowed; background-color: #94a3b8 !important; border-color: #94a3b8 !important; color: white !important; }
-        
-        /* Forzar mayúsculas en toda la app para orden visual */
         body { text-transform: uppercase; }
+        input[type="date"] { text-transform: none; } /* El calendario se ve mejor normal */
     </style>
 </head>
 <body class="bg-slate-100 p-4 font-sans text-slate-800">
@@ -21,7 +19,10 @@
         
         <div class="bg-slate-800 p-6 text-white text-center">
             <h1 class="text-sm font-black tracking-widest">REGISTRO DE COMEDOR</h1>
-            <p id="fechaDisplay" class="text-slate-400 text-[10px] mt-1 font-bold"></p>
+            <div class="mt-4 flex justify-center">
+                <input type="date" id="fechaSeleccionada" onchange="cambiarFecha()" 
+                    class="bg-slate-700 text-white text-xs font-bold p-2 rounded-lg border-none outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
         </div>
 
         <div class="p-6">
@@ -38,41 +39,51 @@
                 GUARDAR ASISTENCIA
             </button>
 
-            <button onclick="reiniciarDiaManual()" class="w-full mt-6 text-slate-300 text-[9px] font-bold tracking-tighter hover:text-red-400 transition-colors">
-                ⚠️ REINICIAR DATOS DEL DÍA
+            <button onclick="reiniciarDiaManual()" class="w-full mt-6 text-slate-300 text-[9px] font-bold tracking-tighter hover:text-red-400">
+                ⚠️ FORZAR REINICIO DE ESTA FECHA
             </button>
         </div>
     </div>
 
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzaHRn6WG8ZJjXicyNxfPdX-turSuB8bpWB3-qEH2_MGuVkxH3baST_ITCG3QRYoCzy/exec"; 
-        const personas = [
-            "ALANIA CARRION, JAYRO", 
-            "ASPARREN ALANIA, CRISTIAN ALEXIS", 
-            "CARDENAS ROJAS, YHADER ROGELIO", 
-            "LEONARDO RIVERA, BRYAN ANTHONY", 
-            "QUINCHORI PARDO, JOSELITO"
-        ];
+        const personas = ["ALANIA CARRION, JAYRO", "ASPARREN ALANIA, CRISTIAN ALEXIS", "CARDENAS ROJAS, YHADER ROGELIO", "LEONARDO RIVERA, BRYAN ANTHONY", "QUINCHORI PARDO, JOSELITO"];
         
         let comidaSeleccionada = "ALMUERZO";
         let respuestas = {};
-        
-        // Auto-reinicio por fecha
-        const hoy = new Date().toLocaleDateString('es-ES');
-        if (localStorage.getItem('fechaUltimoEnvio') !== hoy) {
-            localStorage.removeItem('horariosEnviados');
-            localStorage.setItem('fechaUltimoEnvio', hoy);
-        }
-
-        let horariosEnviados = JSON.parse(localStorage.getItem('horariosEnviados')) || [];
+        let fechaActualISO = "";
 
         function inicializar() {
-            document.getElementById('fechaDisplay').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+            const inputFecha = document.getElementById('fechaSeleccionada');
+            const hoy = new Date();
+            
+            // Configurar límites del calendario
+            const minFecha = "2026-03-13"; 
+            const maxFecha = hoy.toISOString().split('T')[0];
+            
+            inputFecha.min = minFecha;
+            inputFecha.max = maxFecha;
+            inputFecha.value = maxFecha; // Por defecto hoy
+            
+            fechaActualISO = maxFecha;
             cambiarComida(comidaSeleccionada);
+        }
+
+        function cambiarFecha() {
+            fechaActualISO = document.getElementById('fechaSeleccionada').value;
+            respuestas = {}; // Limpiar respuestas temporales al cambiar de día
+            cambiarComida(comidaSeleccionada);
+        }
+
+        function obtenerHorariosEnviados() {
+            // Guardamos bloqueos por fecha para que no se mezclen
+            const storage = JSON.parse(localStorage.getItem('registro_bloqueos')) || {};
+            return storage[fechaActualISO] || [];
         }
 
         function cambiarComida(tipo) {
             comidaSeleccionada = tipo;
+            const horariosEnviados = obtenerHorariosEnviados();
             
             ["DESAYUNO", "ALMUERZO", "CENA"].forEach(c => {
                 const btn = document.getElementById(`opt-${c}`);
@@ -122,30 +133,43 @@
 
         function confirmarEnvio() {
             if (personas.filter(p => !respuestas[`${p}-${comidaSeleccionada}`]).length > 0) return alert("⚠️ MARCA A TODOS.");
-            if (confirm(`¿CONFIRMAS EL ENVÍO DE ${comidaSeleccionada}?`)) enviarDatos();
+            const fechaFormateada = fechaActualISO.split('-').reverse().join('/');
+            if (confirm(`¿CONFIRMAS EL ENVÍO PARA EL DÍA ${fechaFormateada} EN EL HORARIO ${comidaSeleccionada}?`)) enviarDatos(fechaFormateada);
         }
 
-        async function enviarDatos() {
+        async function enviarDatos(fechaParaEnviar) {
             const btn = document.getElementById('btnEnviar');
             btn.innerText = "PROCESANDO..."; btn.disabled = true;
-            const payload = personas.map(p => ({ nombre: p, comida: comidaSeleccionada, estado: respuestas[`${p}-${comidaSeleccionada}`] }));
+            const payload = personas.map(p => ({ 
+                nombre: p, 
+                comida: comidaSeleccionada, 
+                estado: respuestas[`${p}-${comidaSeleccionada}`],
+                fechaManual: fechaParaEnviar // Enviamos la fecha seleccionada al Excel
+            }));
+
             try {
                 await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                alert("✅ DATOS GUARDADOS.");
-                horariosEnviados.push(comidaSeleccionada);
-                localStorage.setItem('horariosEnviados', JSON.stringify(horariosEnviados));
-                localStorage.setItem('fechaUltimoEnvio', hoy);
+                alert("✅ DATOS GUARDADOS PARA EL " + fechaParaEnviar);
+                
+                // Guardar bloqueo específico para esa fecha
+                let storage = JSON.parse(localStorage.getItem('registro_bloqueos')) || {};
+                if (!storage[fechaActualISO]) storage[fechaActualISO] = [];
+                storage[fechaActualISO].push(comidaSeleccionada);
+                localStorage.setItem('registro_bloqueos', JSON.stringify(storage));
+                
                 cambiarComida(comidaSeleccionada);
-            } catch (e) { alert("❌ ERROR DE RED."); btn.disabled = false; btn.innerText = "GUARDAR"; }
+            } catch (e) { alert("❌ ERROR."); btn.disabled = false; btn.innerText = "GUARDAR"; }
         }
 
         function reiniciarDiaManual() {
-            if (confirm("¿DESBLOQUEAR HORARIOS?")) {
-                localStorage.removeItem('horariosEnviados');
-                horariosEnviados = [];
+            if (confirm("¿DESBLOQUEAR HORARIOS DE ESTA FECHA?")) {
+                let storage = JSON.parse(localStorage.getItem('registro_bloqueos')) || {};
+                delete storage[fechaActualISO];
+                localStorage.setItem('registro_bloqueos', JSON.stringify(storage));
                 cambiarComida(comidaSeleccionada);
             }
         }
+
         inicializar();
     </script>
 </body>
