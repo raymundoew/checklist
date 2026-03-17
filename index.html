@@ -6,43 +6,60 @@
     <title>Control de Comedor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Estilos de botones activos y bloqueados */
         .btn-active { background-color: #1e293b !important; color: white !important; border-color: #1e293b !important; }
-        .si-active { background-color: #10b981 !important; color: white !important; }
-        .no-active { background-color: #ef4444 !important; color: white !important; }
+        .si-active { background-color: #10b981 !important; color: white !important; border-color: #10b981 !important; }
+        .no-active { background-color: #ef4444 !important; color: white !important; border-color: #ef4444 !important; }
         .btn-bloqueado { opacity: 0.5; cursor: not-allowed; background-color: #94a3b8 !important; border-color: #94a3b8 !important; color: white !important; }
+        
+        /* Forzar mayúsculas en toda la app para orden visual */
+        body { text-transform: uppercase; }
     </style>
 </head>
-<body class="bg-slate-100 p-4 font-sans">
+<body class="bg-slate-100 p-4 font-sans text-slate-800">
     <div class="max-w-md mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden">
+        
         <div class="bg-slate-800 p-6 text-white text-center">
-            <h1 class="text-xl font-bold tracking-tight uppercase">Registro de Comedor</h1>
-            <p id="fechaDisplay" class="text-slate-400 text-xs mt-1 uppercase font-semibold"></p>
+            <h1 class="text-sm font-black tracking-widest">REGISTRO DE COMEDOR</h1>
+            <p id="fechaDisplay" class="text-slate-400 text-[10px] mt-1 font-bold"></p>
         </div>
+
         <div class="p-6">
-            <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Horario:</label>
+            <label class="block text-[10px] font-black text-slate-400 mb-3 tracking-tighter">SELECCIONAR HORARIO:</label>
             <div class="flex gap-2 mb-8">
-                <button onclick="cambiarComida('DESAYUNO')" id="opt-DESAYUNO" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-bold">DESAYUNO</button>
-                <button onclick="cambiarComida('ALMUERZO')" id="opt-ALMUERZO" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-bold">ALMUERZO</button>
-                <button onclick="cambiarComida('CENA')" id="opt-CENA" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-bold">CENA</button>
+                <button onclick="cambiarComida('DESAYUNO')" id="opt-DESAYUNO" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-black transition-all">DESAYUNO</button>
+                <button onclick="cambiarComida('ALMUERZO')" id="opt-ALMUERZO" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-black transition-all">ALMUERZO</button>
+                <button onclick="cambiarComida('CENA')" id="opt-CENA" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-black transition-all">CENA</button>
             </div>
-            <div id="listaPersonas" class="space-y-4"></div>
-            <button onclick="confirmarEnvio()" id="btnEnviar" class="w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all">GUARDAR ASISTENCIA</button>
-            <button onclick="reiniciarDiaManual()" class="w-full mt-6 text-slate-400 text-[10px] font-bold uppercase tracking-widest hover:text-red-500">⚠️ Forzar Reinicio</button>
+
+            <div id="listaPersonas" class="space-y-3"></div>
+
+            <button onclick="confirmarEnvio()" id="btnEnviar" class="w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-black text-[11px] tracking-widest shadow-lg active:scale-95 transition-all">
+                GUARDAR ASISTENCIA
+            </button>
+
+            <button onclick="reiniciarDiaManual()" class="w-full mt-6 text-slate-300 text-[9px] font-bold tracking-tighter hover:text-red-400 transition-colors">
+                ⚠️ REINICIAR DATOS DEL DÍA
+            </button>
         </div>
     </div>
+
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzaHRn6WG8ZJjXicyNxfPdX-turSuB8bpWB3-qEH2_MGuVkxH3baST_ITCG3QRYoCzy/exec"; 
-        const personas = ["ALANIA CARRION, JAYRO", "ASPARREN ALANIA, CRISTIAN ALEXIS", "CARDENAS ROJAS, YHADER ROGELIO", "LEONARDO RIVERA, BRYAN ANTHONY", "QUINCHORI PARDO, JOSELITO"];
+        const personas = [
+            "ALANIA CARRION, JAYRO", 
+            "ASPARREN ALANIA, CRISTIAN ALEXIS", 
+            "CARDENAS ROJAS, YHADER ROGELIO", 
+            "LEONARDO RIVERA, BRYAN ANTHONY", 
+            "QUINCHORI PARDO, JOSELITO"
+        ];
         
         let comidaSeleccionada = "ALMUERZO";
         let respuestas = {};
         
-        // --- LÓGICA DE AUTO-REINICIO ---
+        // Auto-reinicio por fecha
         const hoy = new Date().toLocaleDateString('es-ES');
-        const ultimaFechaGuardada = localStorage.getItem('fechaUltimoEnvio');
-        
-        // Si la fecha guardada es distinta a hoy, limpiamos todo
-        if (ultimaFechaGuardada !== hoy) {
+        if (localStorage.getItem('fechaUltimoEnvio') !== hoy) {
             localStorage.removeItem('horariosEnviados');
             localStorage.setItem('fechaUltimoEnvio', hoy);
         }
@@ -56,13 +73,16 @@
 
         function cambiarComida(tipo) {
             comidaSeleccionada = tipo;
+            
             ["DESAYUNO", "ALMUERZO", "CENA"].forEach(c => {
                 const btn = document.getElementById(`opt-${c}`);
                 if (horariosEnviados.includes(c)) {
-                    btn.className = "flex-1 py-3 rounded-xl btn-bloqueado text-[10px] font-bold";
+                    btn.className = "flex-1 py-3 rounded-xl btn-bloqueado text-[10px] font-black";
                     btn.innerText = c + " ✓";
                 } else {
-                    btn.className = (c === tipo) ? "flex-1 py-3 rounded-xl border-slate-800 btn-active text-[10px] font-bold shadow-md" : "flex-1 py-3 rounded-xl border-slate-200 text-slate-400 text-[10px] font-bold bg-white";
+                    btn.className = (c === tipo) 
+                        ? "flex-1 py-3 rounded-xl border-slate-800 btn-active text-[10px] font-black shadow-md" 
+                        : "flex-1 py-3 rounded-xl border-slate-200 text-slate-400 text-[10px] font-black bg-white";
                     btn.innerText = c;
                 }
             });
@@ -75,10 +95,10 @@
                 const estadoPrevio = respuestas[`${p}-${tipo}`] || null;
                 contenedor.innerHTML += `
                     <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 ${bloqueado ? 'opacity-40' : ''}">
-                        <span class="text-sm font-bold text-slate-700 leading-tight">${p}</span>
-                        <div class="flex gap-2">
-                            <button ${bloqueado ? 'disabled' : `onclick="marcar('${p}', 'SI')"`} id="si-${p}" class="px-5 py-2 rounded-xl border-2 font-black text-xs ${estadoPrevio === 'SI' ? 'si-active' : 'bg-white text-slate-300'}">SÍ</button>
-                            <button ${bloqueado ? 'disabled' : `onclick="marcar('${p}', 'NO')"`} id="no-${p}" class="px-5 py-2 rounded-xl border-2 font-black text-xs ${estadoPrevio === 'NO' ? 'no-active' : 'bg-white text-slate-300'}">NO</button>
+                        <span class="text-[10px] font-black text-slate-600 leading-tight pr-2">${p}</span>
+                        <div class="flex gap-1">
+                            <button ${bloqueado ? 'disabled' : `onclick="marcar('${p}', 'SI')"`} id="si-${p}" class="w-12 py-2 rounded-lg border-2 font-black text-[10px] transition-all ${estadoPrevio === 'SI' ? 'si-active' : 'bg-white text-slate-200'}">SÍ</button>
+                            <button ${bloqueado ? 'disabled' : `onclick="marcar('${p}', 'NO')"`} id="no-${p}" class="w-12 py-2 rounded-lg border-2 font-black text-[10px] transition-all ${estadoPrevio === 'NO' ? 'no-active' : 'bg-white text-slate-200'}">NO</button>
                         </div>
                     </div>`;
             });
@@ -87,11 +107,11 @@
             if (bloqueado) {
                 btnEnv.innerText = "REGISTRO ENVIADO";
                 btnEnv.disabled = true;
-                btnEnv.className = "w-full mt-10 bg-slate-300 text-white py-4 rounded-2xl font-bold text-lg cursor-not-allowed";
+                btnEnv.className = "w-full mt-10 bg-slate-200 text-slate-400 py-4 rounded-2xl font-black text-[11px] cursor-not-allowed";
             } else {
                 btnEnv.innerText = "GUARDAR ASISTENCIA";
                 btnEnv.disabled = false;
-                btnEnv.className = "w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95";
+                btnEnv.className = "w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-black text-[11px] tracking-widest shadow-lg active:scale-95";
             }
         }
 
@@ -101,35 +121,31 @@
         }
 
         function confirmarEnvio() {
-            if (personas.filter(p => !respuestas[`${p}-${comidaSeleccionada}`]).length > 0) return alert("⚠️ Marca a todos.");
-            if (confirm(`¿Guardar registro de ${comidaSeleccionada}?`)) enviarDatos();
+            if (personas.filter(p => !respuestas[`${p}-${comidaSeleccionada}`]).length > 0) return alert("⚠️ MARCA A TODOS.");
+            if (confirm(`¿CONFIRMAS EL ENVÍO DE ${comidaSeleccionada}?`)) enviarDatos();
         }
 
         async function enviarDatos() {
             const btn = document.getElementById('btnEnviar');
-            btn.innerText = "ENVIANDO..."; btn.disabled = true;
+            btn.innerText = "PROCESANDO..."; btn.disabled = true;
             const payload = personas.map(p => ({ nombre: p, comida: comidaSeleccionada, estado: respuestas[`${p}-${comidaSeleccionada}`] }));
             try {
                 await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                alert("✅ Guardado correctamente.");
-                
-                // Guardamos bloqueo y la fecha del envío
+                alert("✅ DATOS GUARDADOS.");
                 horariosEnviados.push(comidaSeleccionada);
                 localStorage.setItem('horariosEnviados', JSON.stringify(horariosEnviados));
                 localStorage.setItem('fechaUltimoEnvio', hoy);
-                
                 cambiarComida(comidaSeleccionada);
-            } catch (e) { alert("❌ Error."); btn.disabled = false; btn.innerText = "GUARDAR"; }
+            } catch (e) { alert("❌ ERROR DE RED."); btn.disabled = false; btn.innerText = "GUARDAR"; }
         }
 
         function reiniciarDiaManual() {
-            if (confirm("¿Desbloquear horarios manualmente?")) {
+            if (confirm("¿DESBLOQUEAR HORARIOS?")) {
                 localStorage.removeItem('horariosEnviados');
                 horariosEnviados = [];
                 cambiarComida(comidaSeleccionada);
             }
         }
-
         inicializar();
     </script>
 </body>
