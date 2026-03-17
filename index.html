@@ -27,20 +27,33 @@
             </div>
             <div id="listaPersonas" class="space-y-4"></div>
             <button onclick="confirmarEnvio()" id="btnEnviar" class="w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all">GUARDAR ASISTENCIA</button>
-            <button onclick="reiniciarDia()" class="w-full mt-6 text-slate-400 text-[10px] font-bold uppercase tracking-widest hover:text-red-500">⚠️ Reiniciar datos del día</button>
+            <button onclick="reiniciarDiaManual()" class="w-full mt-6 text-slate-400 text-[10px] font-bold uppercase tracking-widest hover:text-red-500">⚠️ Forzar Reinicio</button>
         </div>
     </div>
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzaHRn6WG8ZJjXicyNxfPdX-turSuB8bpWB3-qEH2_MGuVkxH3baST_ITCG3QRYoCzy/exec"; 
         const personas = ["ALANIA CARRION, JAYRO", "ASPARREN ALANIA, CRISTIAN ALEXIS", "CARDENAS ROJAS, YHADER ROGELIO", "LEONARDO RIVERA, BRYAN ANTHONY", "QUINCHORI PARDO, JOSELITO"];
+        
         let comidaSeleccionada = "ALMUERZO";
         let respuestas = {};
+        
+        // --- LÓGICA DE AUTO-REINICIO ---
+        const hoy = new Date().toLocaleDateString('es-ES');
+        const ultimaFechaGuardada = localStorage.getItem('fechaUltimoEnvio');
+        
+        // Si la fecha guardada es distinta a hoy, limpiamos todo
+        if (ultimaFechaGuardada !== hoy) {
+            localStorage.removeItem('horariosEnviados');
+            localStorage.setItem('fechaUltimoEnvio', hoy);
+        }
+
         let horariosEnviados = JSON.parse(localStorage.getItem('horariosEnviados')) || [];
 
         function inicializar() {
             document.getElementById('fechaDisplay').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
             cambiarComida(comidaSeleccionada);
         }
+
         function cambiarComida(tipo) {
             comidaSeleccionada = tipo;
             ["DESAYUNO", "ALMUERZO", "CENA"].forEach(c => {
@@ -53,9 +66,11 @@
                     btn.innerText = c;
                 }
             });
+
             const contenedor = document.getElementById('listaPersonas');
             contenedor.innerHTML = "";
             const bloqueado = horariosEnviados.includes(comidaSeleccionada);
+            
             personas.forEach(p => {
                 const estadoPrevio = respuestas[`${p}-${tipo}`] || null;
                 contenedor.innerHTML += `
@@ -67,37 +82,54 @@
                         </div>
                     </div>`;
             });
+
             const btnEnv = document.getElementById('btnEnviar');
-            if (bloqueado) { btnEnv.innerText = "REGISTRO ENVIADO"; btnEnv.disabled = true; btnEnv.className = "w-full mt-10 bg-slate-300 text-white py-4 rounded-2xl font-bold text-lg cursor-not-allowed"; }
-            else { btnEnv.innerText = "GUARDAR ASISTENCIA"; btnEnv.disabled = false; btnEnv.className = "w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95"; }
+            if (bloqueado) {
+                btnEnv.innerText = "REGISTRO ENVIADO";
+                btnEnv.disabled = true;
+                btnEnv.className = "w-full mt-10 bg-slate-300 text-white py-4 rounded-2xl font-bold text-lg cursor-not-allowed";
+            } else {
+                btnEnv.innerText = "GUARDAR ASISTENCIA";
+                btnEnv.disabled = false;
+                btnEnv.className = "w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95";
+            }
         }
+
         function marcar(p, v) { 
             respuestas[`${p}-${comidaSeleccionada}`] = v; 
             cambiarComida(comidaSeleccionada); 
         }
+
         function confirmarEnvio() {
             if (personas.filter(p => !respuestas[`${p}-${comidaSeleccionada}`]).length > 0) return alert("⚠️ Marca a todos.");
-            if (confirm(`¿Guardar ${comidaSeleccionada}?`)) enviarDatos();
+            if (confirm(`¿Guardar registro de ${comidaSeleccionada}?`)) enviarDatos();
         }
+
         async function enviarDatos() {
             const btn = document.getElementById('btnEnviar');
             btn.innerText = "ENVIANDO..."; btn.disabled = true;
             const payload = personas.map(p => ({ nombre: p, comida: comidaSeleccionada, estado: respuestas[`${p}-${comidaSeleccionada}`] }));
             try {
                 await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                alert("✅ Guardado.");
+                alert("✅ Guardado correctamente.");
+                
+                // Guardamos bloqueo y la fecha del envío
                 horariosEnviados.push(comidaSeleccionada);
                 localStorage.setItem('horariosEnviados', JSON.stringify(horariosEnviados));
+                localStorage.setItem('fechaUltimoEnvio', hoy);
+                
                 cambiarComida(comidaSeleccionada);
             } catch (e) { alert("❌ Error."); btn.disabled = false; btn.innerText = "GUARDAR"; }
         }
-        function reiniciarDia() {
-            if (confirm("¿Desbloquear horarios del día?")) {
+
+        function reiniciarDiaManual() {
+            if (confirm("¿Desbloquear horarios manualmente?")) {
                 localStorage.removeItem('horariosEnviados');
                 horariosEnviados = [];
                 cambiarComida(comidaSeleccionada);
             }
         }
+
         inicializar();
     </script>
 </body>
