@@ -3,44 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Comedor</title>
+    <title>Control de Asistencia Comedor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .btn-si.active { background-color: #10b981; color: white; border-color: #10b981; }
-        .btn-no.active { background-color: #ef4444; color: white; border-color: #ef4444; }
-        .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .btn-active { background-color: #1e293b !important; color: white !important; border-color: #1e293b !important; }
+        .si-active { background-color: #10b981 !important; color: white !important; }
+        .no-active { background-color: #ef4444 !important; color: white !important; }
     </style>
 </head>
-<body class="bg-slate-100 p-2 sm:p-6 font-sans">
-    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
-        <div class="bg-slate-800 p-6 text-white">
-            <h1 class="text-xl font-bold uppercase tracking-wider">Control Diario de Comidas</h1>
-            <p id="fechaDisplay" class="text-slate-400 text-sm"></p>
+<body class="bg-slate-100 p-4 font-sans">
+    <div class="max-w-md mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden">
+        
+        <div class="bg-slate-800 p-6 text-white text-center">
+            <h1 class="text-xl font-bold tracking-tight">REGISTRO DE COMEDOR</h1>
+            <p id="fechaDisplay" class="text-slate-400 text-xs mt-1 uppercase font-semibold"></p>
         </div>
 
-        <div class="table-responsive">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-50 border-b text-slate-700 uppercase text-xs">
-                        <th class="p-4">Nombre Completo</th>
-                        <th class="p-4 text-center">Comida</th>
-                        <th class="p-4 text-center">Asistencia</th>
-                    </tr>
-                </thead>
-                <tbody id="tablaCuerpo" class="divide-y divide-slate-100">
-                    </tbody>
-            </table>
-        </div>
+        <div class="p-6">
+            <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Seleccionar Horario:</label>
+            <div class="flex gap-2 mb-8">
+                <button onclick="cambiarComida('DESAYUNO')" id="opt-DESAYUNO" class="flex-1 py-3 rounded-xl border-2 text-xs font-bold transition-all">DESAYUNO</button>
+                <button onclick="cambiarComida('ALMUERZO')" id="opt-ALMUERZO" class="flex-1 py-3 rounded-xl border-2 text-xs font-bold transition-all">ALMUERZO</button>
+                <button onclick="cambiarComida('CENA')" id="opt-CENA" class="flex-1 py-3 rounded-xl border-2 text-xs font-bold transition-all">CENA</button>
+            </div>
 
-        <div class="p-6 bg-slate-50">
-            <button onclick="enviarDatos()" id="btnEnviar" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95">
-                GUARDAR REGISTRO DEL DÍA
+            <div id="listaPersonas" class="space-y-4">
+                </div>
+
+            <button onclick="enviarDatos()" id="btnEnviar" class="w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all">
+                GUARDAR ASISTENCIA
             </button>
         </div>
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzaHRn6WG8ZJjXicyNxfPdX-turSuB8bpWB3-qEH2_MGuVkxH3baST_ITCG3QRYoCzy/exec";
+        const SCRIPT_URL = "TU_URL_AQUÍ"; // REEMPLAZA CON TU URL DE APPS SCRIPT
         const personas = [
             "ALANIA CARRION, JAYRO",
             "ASPARREN ALANIA, CRISTIAN ALEXIS",
@@ -48,71 +45,84 @@
             "LEONARDO RIVERA, BRYAN ANTHONY",
             "QUINCHORI PARDO, JOSELITO"
         ];
-        const comidas = ["DESAYUNO", "ALMUERZO", "CENA"];
+        
+        let comidaSeleccionada = "ALMUERZO"; // Por defecto
         let respuestas = {};
 
-        function render() {
-            const tbody = document.getElementById('tablaCuerpo');
-            const fecha = new Date().toLocaleDateString('es-ES');
-            document.getElementById('fechaDisplay').innerText = `Fecha: ${fecha}`;
-
-            let html = "";
-            personas.forEach(p => {
-                comidas.forEach((c, index) => {
-                    html += `
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="p-4 text-sm font-bold text-slate-700">${index === 0 ? p : ''}</td>
-                        <td class="p-4 text-center text-xs font-semibold text-slate-500">${c}</td>
-                        <td class="p-4 text-center">
-                            <div class="flex justify-center gap-2">
-                                <button onclick="votar('${p}','${c}','SI')" id="${p}-${c}-SI" class="btn-si border-2 border-slate-200 px-4 py-1 rounded-md text-xs font-bold transition-all">SI</button>
-                                <button onclick="votar('${p}','${c}','NO')" id="${p}-${c}-NO" class="btn-no border-2 border-slate-200 px-4 py-1 rounded-md text-xs font-bold transition-all">NO</button>
-                            </div>
-                        </td>
-                    </tr>`;
-                });
-            });
-            tbody.innerHTML = html;
+        function inicializar() {
+            document.getElementById('fechaDisplay').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+            cambiarComida(comidaSeleccionada);
         }
 
-        function votar(p, c, val) {
-            const key = `${p}-${c}`;
-            respuestas[key] = val;
+        function cambiarComida(tipo) {
+            comidaSeleccionada = tipo;
             
-            document.getElementById(`${p}-${c}-SI`).classList.remove('active');
-            document.getElementById(`${p}-${c}-NO`).classList.remove('active');
-            document.getElementById(`${p}-${c}-${val}`).classList.add('active');
+            // Actualizar botones de comida
+            ["DESAYUNO", "ALMUERZO", "CENA"].forEach(c => {
+                document.getElementById(`opt-${c}`).className = (c === tipo) 
+                    ? "flex-1 py-3 rounded-xl border-slate-800 btn-active text-xs font-bold shadow-md" 
+                    : "flex-1 py-3 rounded-xl border-slate-200 text-slate-400 text-xs font-bold bg-white";
+            });
+
+            // Limpiar y generar lista
+            const contenedor = document.getElementById('listaPersonas');
+            contenedor.innerHTML = "";
+            
+            personas.forEach(p => {
+                const estadoPrevio = respuestas[`${p}-${tipo}`] || null;
+                contenedor.innerHTML += `
+                    <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <span class="text-sm font-bold text-slate-700 leading-tight pr-2">${p}</span>
+                        <div class="flex gap-2">
+                            <button onclick="marcar('${p}', 'SI')" id="si-${p}" class="px-5 py-2 rounded-xl border-2 font-black text-xs transition-all ${estadoPrevio === 'SI' ? 'si-active' : 'bg-white text-slate-300'}">SÍ</button>
+                            <button onclick="marcar('${p}', 'NO')" id="no-${p}" class="px-5 py-2 rounded-xl border-2 font-black text-xs transition-all ${estadoPrevio === 'NO' ? 'no-active' : 'bg-white text-slate-300'}">NO</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function marcar(persona, valor) {
+            respuestas[`${persona}-${comidaSeleccionada}`] = valor;
+            
+            // Resetear y activar colores visuales
+            document.getElementById(`si-${persona}`).className = (valor === 'SI') ? "px-5 py-2 rounded-xl font-black text-xs si-active shadow-md" : "px-5 py-2 rounded-xl border-2 bg-white text-slate-300 font-black text-xs";
+            document.getElementById(`no-${persona}`).className = (valor === 'NO') ? "px-5 py-2 rounded-xl font-black text-xs no-active shadow-md" : "px-5 py-2 rounded-xl border-2 bg-white text-slate-300 font-black text-xs";
         }
 
         async function enviarDatos() {
-            if (Object.keys(respuestas).length < (personas.length * comidas.length)) {
-                alert("⚠️ Por favor, completa todos los campos antes de guardar.");
+            const faltantes = personas.filter(p => !respuestas[`${p}-${comidaSeleccionada}`]);
+            
+            if (faltantes.length > 0) {
+                alert("⚠️ Por favor completa la asistencia de todos para el " + comidaSeleccionada);
                 return;
             }
 
             const btn = document.getElementById('btnEnviar');
-            btn.innerText = "⏳ GUARDANDO...";
+            btn.innerText = "ENVIANDO...";
             btn.disabled = true;
 
-            const payload = [];
-            const fechaHoy = new Date().toLocaleDateString('es-ES');
-            for (const key in respuestas) {
-                const [nombre, comida] = key.split('-');
-                payload.push({ fecha: fechaHoy, nombre, comida, estado: respuestas[key] });
-            }
+            const payload = personas.map(p => ({
+                nombre: p,
+                comida: comidaSeleccionada,
+                estado: respuestas[`${p}-${comidaSeleccionada}`]
+            }));
 
             try {
                 await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                alert("✅ ¡Registro guardado con éxito!");
-                location.reload();
+                alert("✅ Registro de " + comidaSeleccionada + " guardado.");
+                // Limpiar solo los del horario enviado
+                personas.forEach(p => delete respuestas[`${p}-${comidaSeleccionada}`]);
+                cambiarComida(comidaSeleccionada);
             } catch (e) {
-                alert("❌ Error de conexión. Intenta de nuevo.");
+                alert("❌ Error de red.");
+            } finally {
+                btn.innerText = "GUARDAR ASISTENCIA";
                 btn.disabled = false;
-                btn.innerText = "GUARDAR REGISTRO DEL DÍA";
             }
         }
 
-        render();
+        inicializar();
     </script>
 </body>
 </html>
