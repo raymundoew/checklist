@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check-list Diario</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .btn-active-si { background-color: #10b981 !important; color: white; }
+        .btn-active-no { background-color: #ef4444 !important; color: white; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans p-4">
+    <div class="max-w-md mx-auto bg-white rounded-3xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold text-slate-800 mb-2">Check-list Diario</h1>
+        <p id="fecha" class="text-sm text-slate-500 mb-6"></p>
+
+        <div class="mb-6 flex gap-2">
+            <input type="text" id="nuevoNombre" placeholder="Añadir persona..." class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <button onclick="agregarPersona()" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold">+</button>
+        </div>
+
+        <div id="listaContenedor" class="space-y-4">
+            </div>
+
+        <button onclick="enviarDatos()" id="btnEnviar" class="w-full mt-8 bg-slate-900 text-white py-4 rounded-2xl font-bold text-lg hover:bg-slate-800 transition-all">
+            Guardar en Google Sheets
+        </button>
+    </div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzaHRn6WG8ZJjXicyNxfPdX-turSuB8bpWB3-qEH2_MGuVkxH3baST_ITCG3QRYoCzy/exec";
+        let personas = JSON.parse(localStorage.getItem('personas')) || ["Persona 1", "Persona 2", "Persona 3"];
+        let respuestas = {};
+
+        function renderizar() {
+            const container = document.getElementById('listaContenedor');
+            container.innerHTML = '';
+            personas.forEach((p, index) => {
+                container.innerHTML += `
+                    <div class="flex items-center justify-between p-3 bg-slate-100 rounded-2xl">
+                        <span class="font-medium text-slate-700">${p}</span>
+                        <div class="flex gap-2">
+                            <button onclick="setVoto('${p}', 'SI')" id="si-${p}" class="px-4 py-2 rounded-xl bg-white text-slate-400 font-bold border transition-all">SÍ</button>
+                            <button onclick="setVoto('${p}', 'NO')" id="no-${p}" class="px-4 py-2 rounded-xl bg-white text-slate-400 font-bold border transition-all">NO</button>
+                            <button onclick="eliminarPersona(${index})" class="ml-2 text-slate-300 hover:text-red-500">✕</button>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('fecha').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        function setVoto(nombre, valor) {
+            respuestas[nombre] = valor;
+            document.getElementById(`si-${nombre}`).className = valor === 'SI' ? 'px-4 py-2 rounded-xl btn-active-si font-bold shadow-md' : 'px-4 py-2 rounded-xl bg-white text-slate-400 font-bold border';
+            document.getElementById(`no-${nombre}`).className = valor === 'NO' ? 'px-4 py-2 rounded-xl btn-active-no font-bold shadow-md' : 'px-4 py-2 rounded-xl bg-white text-slate-400 font-bold border';
+        }
+
+        function agregarPersona() {
+            const input = document.getElementById('nuevoNombre');
+            if(input.value) {
+                personas.push(input.value);
+                localStorage.setItem('personas', JSON.stringify(personas));
+                input.value = '';
+                renderizar();
+            }
+        }
+
+        function eliminarPersona(index) {
+            personas.splice(index, 1);
+            localStorage.setItem('personas', JSON.stringify(personas));
+            renderizar();
+        }
+
+        async function enviarDatos() {
+            if (Object.keys(respuestas).length < personas.length) {
+                alert("Por favor completa el check-list de todos.");
+                return;
+            }
+
+            const btn = document.getElementById('btnEnviar');
+            btn.innerText = "Enviando...";
+            btn.disabled = true;
+
+            const payload = personas.map(p => ({ nombre: p, estado: respuestas[p] }));
+
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(payload)
+                });
+                alert("¡Datos guardados con éxito!");
+                respuestas = {};
+                renderizar();
+            } catch (e) {
+                alert("Error al enviar.");
+            } finally {
+                btn.innerText = "Guardar en Google Sheets";
+                btn.disabled = false;
+            }
+        }
+
+        renderizar();
+    </script>
+</body>
+</html>
