@@ -9,166 +9,123 @@
         .btn-active { background-color: #1e293b !important; color: white !important; border-color: #1e293b !important; }
         .si-active { background-color: #10b981 !important; color: white !important; border-color: #10b981 !important; }
         .no-active { background-color: #ef4444 !important; color: white !important; border-color: #ef4444 !important; }
-        .btn-bloqueado { opacity: 0.5; cursor: not-allowed; background-color: #94a3b8 !important; border-color: #94a3b8 !important; color: white !important; }
         body { text-transform: uppercase; }
-        input[type="date"] { text-transform: none; } /* El calendario se ve mejor normal */
+        .loading { opacity: 0.5; pointer-events: none; }
     </style>
 </head>
 <body class="bg-slate-100 p-4 font-sans text-slate-800">
-    <div class="max-w-md mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden">
-        
+    <div id="mainContainer" class="max-w-md mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden transition-all">
         <div class="bg-slate-800 p-6 text-white text-center">
-            <h1 class="text-sm font-black tracking-widest">REGISTRO DE COMEDOR</h1>
-            <div class="mt-4 flex justify-center">
-                <input type="date" id="fechaSeleccionada" onchange="cambiarFecha()" 
-                    class="bg-slate-700 text-white text-xs font-bold p-2 rounded-lg border-none outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
+            <h1 class="text-sm font-black tracking-widest">VISOR Y REGISTRO</h1>
+            <input type="date" id="fechaSeleccionada" onchange="consultarServidor()" class="mt-4 bg-slate-700 text-white text-xs font-bold p-2 rounded-lg outline-none">
         </div>
-
         <div class="p-6">
-            <label class="block text-[10px] font-black text-slate-400 mb-3 tracking-tighter">SELECCIONAR HORARIO:</label>
             <div class="flex gap-2 mb-8">
-                <button onclick="cambiarComida('DESAYUNO')" id="opt-DESAYUNO" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-black transition-all">DESAYUNO</button>
-                <button onclick="cambiarComida('ALMUERZO')" id="opt-ALMUERZO" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-black transition-all">ALMUERZO</button>
-                <button onclick="cambiarComida('CENA')" id="opt-CENA" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-black transition-all">CENA</button>
+                <button onclick="setComida('DESAYUNO')" id="opt-DESAYUNO" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-black transition-all">DESAYUNO</button>
+                <button onclick="setComida('ALMUERZO')" id="opt-ALMUERZO" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-black transition-all">ALMUERZO</button>
+                <button onclick="setComida('CENA')" id="opt-CENA" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-black transition-all">CENA</button>
             </div>
-
             <div id="listaPersonas" class="space-y-3"></div>
-
-            <button onclick="confirmarEnvio()" id="btnEnviar" class="w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-black text-[11px] tracking-widest shadow-lg active:scale-95 transition-all">
-                GUARDAR ASISTENCIA
-            </button>
-
-            <button onclick="reiniciarDiaManual()" class="w-full mt-6 text-slate-300 text-[9px] font-bold tracking-tighter hover:text-red-400">
-                ⚠️ FORZAR REINICIO DE ESTA FECHA
-            </button>
+            <button onclick="confirmarEnvio()" id="btnEnviar" class="w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-black text-[11px] tracking-widest shadow-lg active:scale-95 transition-all">GUARDAR ASISTENCIA / EDITAR</button>
         </div>
     </div>
 
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzaHRn6WG8ZJjXicyNxfPdX-turSuB8bpWB3-qEH2_MGuVkxH3baST_ITCG3QRYoCzy/exec"; 
         const personas = ["ALANIA CARRION, JAYRO", "ASPARREN ALANIA, CRISTIAN ALEXIS", "CARDENAS ROJAS, YHADER ROGELIO", "LEONARDO RIVERA, BRYAN ANTHONY", "QUINCHORI PARDO, JOSELITO"];
-        
         let comidaSeleccionada = "ALMUERZO";
-        let respuestas = {};
-        let fechaActualISO = "";
+        let respuestasServidor = {}; // Aquí guardamos lo que leemos del Excel
 
         function inicializar() {
-            const inputFecha = document.getElementById('fechaSeleccionada');
+            const input = document.getElementById('fechaSeleccionada');
             const hoy = new Date();
-            
-            // Configurar límites del calendario
-            const minFecha = "2026-03-13"; 
-            const maxFecha = hoy.toISOString().split('T')[0];
-            
-            inputFecha.min = minFecha;
-            inputFecha.max = maxFecha;
-            inputFecha.value = maxFecha; // Por defecto hoy
-            
-            fechaActualISO = maxFecha;
-            cambiarComida(comidaSeleccionada);
+            input.max = hoy.toISOString().split('T')[0];
+            input.value = input.max;
+            consultarServidor();
         }
 
-        function cambiarFecha() {
-            fechaActualISO = document.getElementById('fechaSeleccionada').value;
-            respuestas = {}; // Limpiar respuestas temporales al cambiar de día
-            cambiarComida(comidaSeleccionada);
+        async function consultarServidor() {
+            const container = document.getElementById('mainContainer');
+            container.classList.add('loading');
+            
+            const fechaInput = document.getElementById('fechaSeleccionada').value;
+            const fechaFormateada = fechaInput.split('-').reverse().join('/');
+            
+            try {
+                const response = await fetch(`${SCRIPT_URL}?readDate=${fechaFormateada}`);
+                const data = await response.json();
+                
+                // Limpiar y mapear datos del servidor
+                respuestasServidor = {};
+                data.forEach(r => {
+                    respuestasServidor[`${r.nombre}-${r.comida}`] = r.estado;
+                });
+                renderizar();
+            } catch (e) {
+                console.log("Día sin datos previos o error");
+                respuestasServidor = {};
+                renderizar();
+            } finally {
+                container.classList.remove('loading');
+            }
         }
 
-        function obtenerHorariosEnviados() {
-            // Guardamos bloqueos por fecha para que no se mezclen
-            const storage = JSON.parse(localStorage.getItem('registro_bloqueos')) || {};
-            return storage[fechaActualISO] || [];
-        }
-
-        function cambiarComida(tipo) {
+        function setComida(tipo) {
             comidaSeleccionada = tipo;
-            const horariosEnviados = obtenerHorariosEnviados();
-            
+            renderizar();
+        }
+
+        function renderizar() {
+            // Pintar botones de horario
             ["DESAYUNO", "ALMUERZO", "CENA"].forEach(c => {
-                const btn = document.getElementById(`opt-${c}`);
-                if (horariosEnviados.includes(c)) {
-                    btn.className = "flex-1 py-3 rounded-xl btn-bloqueado text-[10px] font-black";
-                    btn.innerText = c + " ✓";
-                } else {
-                    btn.className = (c === tipo) 
-                        ? "flex-1 py-3 rounded-xl border-slate-800 btn-active text-[10px] font-black shadow-md" 
-                        : "flex-1 py-3 rounded-xl border-slate-200 text-slate-400 text-[10px] font-black bg-white";
-                    btn.innerText = c;
-                }
+                document.getElementById(`opt-${c}`).className = (c === comidaSeleccionada) 
+                    ? "flex-1 py-3 rounded-xl border-slate-800 btn-active text-[10px] font-black shadow-md" 
+                    : "flex-1 py-3 rounded-xl border-slate-200 text-slate-400 text-[10px] font-black bg-white";
             });
 
             const contenedor = document.getElementById('listaPersonas');
             contenedor.innerHTML = "";
-            const bloqueado = horariosEnviados.includes(comidaSeleccionada);
             
             personas.forEach(p => {
-                const estadoPrevio = respuestas[`${p}-${tipo}`] || null;
+                const estado = respuestasServidor[`${p}-${comidaSeleccionada}`] || null;
                 contenedor.innerHTML += `
-                    <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 ${bloqueado ? 'opacity-40' : ''}">
-                        <span class="text-[10px] font-black text-slate-600 leading-tight pr-2">${p}</span>
+                    <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <span class="text-[10px] font-black text-slate-600">${p}</span>
                         <div class="flex gap-1">
-                            <button ${bloqueado ? 'disabled' : `onclick="marcar('${p}', 'SI')"`} id="si-${p}" class="w-12 py-2 rounded-lg border-2 font-black text-[10px] transition-all ${estadoPrevio === 'SI' ? 'si-active' : 'bg-white text-slate-200'}">SÍ</button>
-                            <button ${bloqueado ? 'disabled' : `onclick="marcar('${p}', 'NO')"`} id="no-${p}" class="w-12 py-2 rounded-lg border-2 font-black text-[10px] transition-all ${estadoPrevio === 'NO' ? 'no-active' : 'bg-white text-slate-200'}">NO</button>
+                            <button onclick="marcar('${p}', 'SI')" class="w-12 py-2 rounded-lg border-2 font-black text-[10px] ${estado === 'SI' ? 'si-active' : 'bg-white text-slate-200'}">SÍ</button>
+                            <button onclick="marcar('${p}', 'NO')" class="w-12 py-2 rounded-lg border-2 font-black text-[10px] ${estado === 'NO' ? 'no-active' : 'bg-white text-slate-200'}">NO</button>
                         </div>
                     </div>`;
             });
-
-            const btnEnv = document.getElementById('btnEnviar');
-            if (bloqueado) {
-                btnEnv.innerText = "REGISTRO ENVIADO";
-                btnEnv.disabled = true;
-                btnEnv.className = "w-full mt-10 bg-slate-200 text-slate-400 py-4 rounded-2xl font-black text-[11px] cursor-not-allowed";
-            } else {
-                btnEnv.innerText = "GUARDAR ASISTENCIA";
-                btnEnv.disabled = false;
-                btnEnv.className = "w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-black text-[11px] tracking-widest shadow-lg active:scale-95";
-            }
         }
 
-        function marcar(p, v) { 
-            respuestas[`${p}-${comidaSeleccionada}`] = v; 
-            cambiarComida(comidaSeleccionada); 
+        function marcar(p, v) {
+            respuestasServidor[`${p}-${comidaSeleccionada}`] = v;
+            renderizar();
         }
 
-        function confirmarEnvio() {
-            if (personas.filter(p => !respuestas[`${p}-${comidaSeleccionada}`]).length > 0) return alert("⚠️ MARCA A TODOS.");
-            const fechaFormateada = fechaActualISO.split('-').reverse().join('/');
-            if (confirm(`¿CONFIRMAS EL ENVÍO PARA EL DÍA ${fechaFormateada} EN EL HORARIO ${comidaSeleccionada}?`)) enviarDatos(fechaFormateada);
-        }
-
-        async function enviarDatos(fechaParaEnviar) {
-            const btn = document.getElementById('btnEnviar');
-            btn.innerText = "PROCESANDO..."; btn.disabled = true;
-            const payload = personas.map(p => ({ 
-                nombre: p, 
-                comida: comidaSeleccionada, 
-                estado: respuestas[`${p}-${comidaSeleccionada}`],
-                fechaManual: fechaParaEnviar // Enviamos la fecha seleccionada al Excel
+        async function enviarDatos() {
+            const fechaInput = document.getElementById('fechaSeleccionada').value;
+            const fechaFormateada = fechaInput.split('-').reverse().join('/');
+            const payload = personas.map(p => ({
+                nombre: p,
+                comida: comidaSeleccionada,
+                estado: respuestasServidor[`${p}-${comidaSeleccionada}`],
+                fechaManual: fechaFormateada
             }));
 
+            if (payload.some(p => !p.estado)) return alert("MARCA A TODOS");
+
+            document.getElementById('btnEnviar').innerText = "GUARDANDO...";
             try {
                 await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                alert("✅ DATOS GUARDADOS PARA EL " + fechaParaEnviar);
-                
-                // Guardar bloqueo específico para esa fecha
-                let storage = JSON.parse(localStorage.getItem('registro_bloqueos')) || {};
-                if (!storage[fechaActualISO]) storage[fechaActualISO] = [];
-                storage[fechaActualISO].push(comidaSeleccionada);
-                localStorage.setItem('registro_bloqueos', JSON.stringify(storage));
-                
-                cambiarComida(comidaSeleccionada);
-            } catch (e) { alert("❌ ERROR."); btn.disabled = false; btn.innerText = "GUARDAR"; }
+                alert("ACTUALIZADO EN EXCEL");
+                consultarServidor(); // Recargar para confirmar
+            } catch (e) { alert("ERROR"); }
+            document.getElementById('btnEnviar').innerText = "GUARDAR ASISTENCIA / EDITAR";
         }
 
-        function reiniciarDiaManual() {
-            if (confirm("¿DESBLOQUEAR HORARIOS DE ESTA FECHA?")) {
-                let storage = JSON.parse(localStorage.getItem('registro_bloqueos')) || {};
-                delete storage[fechaActualISO];
-                localStorage.setItem('registro_bloqueos', JSON.stringify(storage));
-                cambiarComida(comidaSeleccionada);
-            }
-        }
+        function confirmarEnvio() { if(confirm("¿CONFIRMAS LOS CAMBIOS?")) enviarDatos(); }
 
         inicializar();
     </script>
