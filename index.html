@@ -6,37 +6,41 @@
     <title>Control de Consumo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Tamaño de fuente base 12px para todo */
-        * { font-size: 12px !important; text-transform: uppercase; font-family: sans-serif; }
+        /* Tamaño de fuente 11px uniforme */
+        * { font-size: 11px !important; text-transform: uppercase; font-family: sans-serif; }
         
-        .btn-active { background-color: #1e293b !important; color: white !important; border-color: #1e293b !important; }
-        .si-active { background-color: #10b981 !important; color: white !important; border-color: #10b981 !important; }
-        .no-active { background-color: #ef4444 !important; color: white !important; border-color: #ef4444 !important; }
+        /* Negritas solo para elementos clave */
+        .font-negrita-dura { font-weight: 900 !important; }
+        
+        .btn-active { background-color: #1e293b !important; color: white !important; font-weight: 900 !important; }
+        .si-active { background-color: #10b981 !important; color: white !important; font-weight: 900 !important; border-color: #10b981 !important; }
+        .no-active { background-color: #ef4444 !important; color: white !important; font-weight: 900 !important; border-color: #ef4444 !important; }
+        
         .loading { opacity: 0.5; pointer-events: none; }
-        input[type="date"] { text-transform: none !important; }
+        input[type="date"] { text-transform: none !important; font-weight: 900 !important; }
     </style>
 </head>
 <body class="bg-slate-100 p-4 text-slate-800">
     <div id="mainContainer" class="max-w-md mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden transition-all">
         
         <div class="bg-slate-800 p-6 text-white text-center">
-            <h1 class="font-black tracking-widest">REGISTRO DE CONSUMO</h1>
+            <h1 class="font-negrita-dura tracking-widest">REGISTRO DE CONSUMO</h1>
             <input type="date" id="fechaSeleccionada" onchange="consultarServidor()" 
-                class="mt-4 bg-slate-700 text-white font-bold p-2 rounded-lg outline-none border-none">
+                class="mt-4 bg-slate-700 text-white p-2 rounded-lg outline-none border-none">
         </div>
 
         <div class="p-6">
-            <label class="block font-black text-slate-400 mb-3">SELECCIONAR HORARIO:</label>
+            <label class="block font-negrita-dura text-slate-400 mb-3 tracking-tighter">SELECCIONAR HORARIO:</label>
             <div class="flex gap-2 mb-8">
-                <button onclick="setComida('DESAYUNO')" id="opt-DESAYUNO" class="flex-1 py-3 rounded-xl border-2 font-black transition-all">DESAYUNO</button>
-                <button onclick="setComida('ALMUERZO')" id="opt-ALMUERZO" class="flex-1 py-3 rounded-xl border-2 font-black transition-all">ALMUERZO</button>
-                <button onclick="setComida('CENA')" id="opt-CENA" class="flex-1 py-3 rounded-xl border-2 font-black transition-all">CENA</button>
+                <button onclick="setComida('DESAYUNO')" id="opt-DESAYUNO" class="flex-1 py-3 rounded-xl border-2 font-negrita-dura transition-all">DESAYUNO</button>
+                <button onclick="setComida('ALMUERZO')" id="opt-ALMUERZO" class="flex-1 py-3 rounded-xl border-2 font-negrita-dura transition-all">ALMUERZO</button>
+                <button onclick="setComida('CENA')" id="opt-CENA" class="flex-1 py-3 rounded-xl border-2 font-negrita-dura transition-all">CENA</button>
             </div>
 
             <div id="listaPersonas" class="space-y-3"></div>
 
             <button onclick="confirmarEnvio()" id="btnEnviar" 
-                class="w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-black tracking-widest shadow-lg active:scale-95 transition-all">
+                class="w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-negrita-dura tracking-widest shadow-lg active:scale-95 transition-all">
                 GUARDAR CONSUMO / EDITAR
             </button>
         </div>
@@ -44,13 +48,7 @@
 
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzaHRn6WG8ZJjXicyNxfPdX-turSuB8bpWB3-qEH2_MGuVkxH3baST_ITCG3QRYoCzy/exec"; // REEMPLAZA ESTO
-        const personas = [
-            "ALANIA CARRION, JAYRO", 
-            "ASPARREN ALANIA, CRISTIAN ALEXIS", 
-            "CARDENAS ROJAS, YHADER ROGELIO", 
-            "LEONARDO RIVERA, BRYAN ANTHONY", 
-            "QUINCHORI PARDO, JOSELITO"
-        ];
+        const personas = ["ALANIA CARRION, JAYRO", "ASPARREN ALANIA, CRISTIAN ALEXIS", "CARDENAS ROJAS, YHADER ROGELIO", "LEONARDO RIVERA, BRYAN ANTHONY", "QUINCHORI PARDO, JOSELITO"];
         
         let comidaSeleccionada = "ALMUERZO";
         let respuestasServidor = {};
@@ -58,8 +56,10 @@
         function inicializar() {
             const input = document.getElementById('fechaSeleccionada');
             const hoy = new Date();
-            input.max = hoy.toISOString().split('T')[0];
-            input.value = input.max;
+            // Límite: No permite días futuros (si hoy es 17, el 18 está bloqueado)
+            const maxFecha = hoy.toISOString().split('T')[0];
+            input.max = maxFecha;
+            input.value = maxFecha;
             consultarServidor();
         }
 
@@ -95,8 +95,8 @@
         function renderizar() {
             ["DESAYUNO", "ALMUERZO", "CENA"].forEach(c => {
                 document.getElementById(`opt-${c}`).className = (c === comidaSeleccionada) 
-                    ? "flex-1 py-3 rounded-xl border-slate-800 btn-active font-black shadow-md" 
-                    : "flex-1 py-3 rounded-xl border-slate-200 text-slate-400 font-black bg-white";
+                    ? "flex-1 py-3 rounded-xl border-slate-800 btn-active shadow-md" 
+                    : "flex-1 py-3 rounded-xl border-slate-200 text-slate-400 bg-white font-normal";
             });
 
             const contenedor = document.getElementById('listaPersonas');
@@ -106,10 +106,10 @@
                 const estado = respuestasServidor[`${p}-${comidaSeleccionada}`] || null;
                 contenedor.innerHTML += `
                     <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <span class="font-black text-slate-600 pr-2">${p}</span>
+                        <span class="font-normal text-slate-600 pr-2">${p}</span>
                         <div class="flex gap-1">
-                            <button onclick="marcar('${p}', 'SI')" class="w-14 py-2 rounded-lg border-2 font-black transition-all ${estado === 'SI' ? 'si-active' : 'bg-white text-slate-200'}">SÍ</button>
-                            <button onclick="marcar('${p}', 'NO')" class="w-14 py-2 rounded-lg border-2 font-black transition-all ${estado === 'NO' ? 'no-active' : 'bg-white text-slate-200'}">NO</button>
+                            <button onclick="marcar('${p}', 'SI')" class="w-14 py-2 rounded-lg border-2 font-negrita-dura transition-all ${estado === 'SI' ? 'si-active' : 'bg-white text-slate-200'}">SÍ</button>
+                            <button onclick="marcar('${p}', 'NO')" class="w-14 py-2 rounded-lg border-2 font-negrita-dura transition-all ${estado === 'NO' ? 'no-active' : 'bg-white text-slate-200'}">NO</button>
                         </div>
                     </div>`;
             });
@@ -140,12 +140,12 @@
                 await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
                 alert("✅ REGISTRO ACTUALIZADO");
                 
-                // Pequeña pausa para asegurar sincronización con Sheets
+                // Pausa de 1.5s para asegurar sincronización y que no se desmarquen los botones
                 setTimeout(() => {
                     consultarServidor();
                     btn.disabled = false;
                     btn.innerText = "GUARDAR CONSUMO / EDITAR";
-                }, 1000);
+                }, 1500);
 
             } catch (e) { 
                 alert("❌ ERROR"); 
