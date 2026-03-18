@@ -3,38 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Comedor</title>
+    <title>Control de Consumo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Tamaño de fuente base 12px para todo */
+        * { font-size: 12px !important; text-transform: uppercase; font-family: sans-serif; }
+        
         .btn-active { background-color: #1e293b !important; color: white !important; border-color: #1e293b !important; }
         .si-active { background-color: #10b981 !important; color: white !important; border-color: #10b981 !important; }
         .no-active { background-color: #ef4444 !important; color: white !important; border-color: #ef4444 !important; }
-        body { text-transform: uppercase; }
         .loading { opacity: 0.5; pointer-events: none; }
+        input[type="date"] { text-transform: none !important; }
     </style>
 </head>
-<body class="bg-slate-100 p-4 font-sans text-slate-800">
+<body class="bg-slate-100 p-4 text-slate-800">
     <div id="mainContainer" class="max-w-md mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden transition-all">
+        
         <div class="bg-slate-800 p-6 text-white text-center">
-            <h1 class="text-sm font-black tracking-widest">VISOR Y REGISTRO</h1>
-            <input type="date" id="fechaSeleccionada" onchange="consultarServidor()" class="mt-4 bg-slate-700 text-white text-xs font-bold p-2 rounded-lg outline-none">
+            <h1 class="font-black tracking-widest">REGISTRO DE CONSUMO</h1>
+            <input type="date" id="fechaSeleccionada" onchange="consultarServidor()" 
+                class="mt-4 bg-slate-700 text-white font-bold p-2 rounded-lg outline-none border-none">
         </div>
+
         <div class="p-6">
+            <label class="block font-black text-slate-400 mb-3">SELECCIONAR HORARIO:</label>
             <div class="flex gap-2 mb-8">
-                <button onclick="setComida('DESAYUNO')" id="opt-DESAYUNO" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-black transition-all">DESAYUNO</button>
-                <button onclick="setComida('ALMUERZO')" id="opt-ALMUERZO" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-black transition-all">ALMUERZO</button>
-                <button onclick="setComida('CENA')" id="opt-CENA" class="flex-1 py-3 rounded-xl border-2 text-[10px] font-black transition-all">CENA</button>
+                <button onclick="setComida('DESAYUNO')" id="opt-DESAYUNO" class="flex-1 py-3 rounded-xl border-2 font-black transition-all">DESAYUNO</button>
+                <button onclick="setComida('ALMUERZO')" id="opt-ALMUERZO" class="flex-1 py-3 rounded-xl border-2 font-black transition-all">ALMUERZO</button>
+                <button onclick="setComida('CENA')" id="opt-CENA" class="flex-1 py-3 rounded-xl border-2 font-black transition-all">CENA</button>
             </div>
+
             <div id="listaPersonas" class="space-y-3"></div>
-            <button onclick="confirmarEnvio()" id="btnEnviar" class="w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-black text-[11px] tracking-widest shadow-lg active:scale-95 transition-all">GUARDAR ASISTENCIA / EDITAR</button>
+
+            <button onclick="confirmarEnvio()" id="btnEnviar" 
+                class="w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-black tracking-widest shadow-lg active:scale-95 transition-all">
+                GUARDAR CONSUMO / EDITAR
+            </button>
         </div>
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzaHRn6WG8ZJjXicyNxfPdX-turSuB8bpWB3-qEH2_MGuVkxH3baST_ITCG3QRYoCzy/exec"; 
-        const personas = ["ALANIA CARRION, JAYRO", "ASPARREN ALANIA, CRISTIAN ALEXIS", "CARDENAS ROJAS, YHADER ROGELIO", "LEONARDO RIVERA, BRYAN ANTHONY", "QUINCHORI PARDO, JOSELITO"];
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzaHRn6WG8ZJjXicyNxfPdX-turSuB8bpWB3-qEH2_MGuVkxH3baST_ITCG3QRYoCzy/exec"; // REEMPLAZA ESTO
+        const personas = [
+            "ALANIA CARRION, JAYRO", 
+            "ASPARREN ALANIA, CRISTIAN ALEXIS", 
+            "CARDENAS ROJAS, YHADER ROGELIO", 
+            "LEONARDO RIVERA, BRYAN ANTHONY", 
+            "QUINCHORI PARDO, JOSELITO"
+        ];
+        
         let comidaSeleccionada = "ALMUERZO";
-        let respuestasServidor = {}; // Aquí guardamos lo que leemos del Excel
+        let respuestasServidor = {};
 
         function inicializar() {
             const input = document.getElementById('fechaSeleccionada');
@@ -55,14 +74,12 @@
                 const response = await fetch(`${SCRIPT_URL}?readDate=${fechaFormateada}`);
                 const data = await response.json();
                 
-                // Limpiar y mapear datos del servidor
                 respuestasServidor = {};
                 data.forEach(r => {
                     respuestasServidor[`${r.nombre}-${r.comida}`] = r.estado;
                 });
                 renderizar();
             } catch (e) {
-                console.log("Día sin datos previos o error");
                 respuestasServidor = {};
                 renderizar();
             } finally {
@@ -76,11 +93,10 @@
         }
 
         function renderizar() {
-            // Pintar botones de horario
             ["DESAYUNO", "ALMUERZO", "CENA"].forEach(c => {
                 document.getElementById(`opt-${c}`).className = (c === comidaSeleccionada) 
-                    ? "flex-1 py-3 rounded-xl border-slate-800 btn-active text-[10px] font-black shadow-md" 
-                    : "flex-1 py-3 rounded-xl border-slate-200 text-slate-400 text-[10px] font-black bg-white";
+                    ? "flex-1 py-3 rounded-xl border-slate-800 btn-active font-black shadow-md" 
+                    : "flex-1 py-3 rounded-xl border-slate-200 text-slate-400 font-black bg-white";
             });
 
             const contenedor = document.getElementById('listaPersonas');
@@ -90,10 +106,10 @@
                 const estado = respuestasServidor[`${p}-${comidaSeleccionada}`] || null;
                 contenedor.innerHTML += `
                     <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <span class="text-[10px] font-black text-slate-600">${p}</span>
+                        <span class="font-black text-slate-600 pr-2">${p}</span>
                         <div class="flex gap-1">
-                            <button onclick="marcar('${p}', 'SI')" class="w-12 py-2 rounded-lg border-2 font-black text-[10px] ${estado === 'SI' ? 'si-active' : 'bg-white text-slate-200'}">SÍ</button>
-                            <button onclick="marcar('${p}', 'NO')" class="w-12 py-2 rounded-lg border-2 font-black text-[10px] ${estado === 'NO' ? 'no-active' : 'bg-white text-slate-200'}">NO</button>
+                            <button onclick="marcar('${p}', 'SI')" class="w-14 py-2 rounded-lg border-2 font-black transition-all ${estado === 'SI' ? 'si-active' : 'bg-white text-slate-200'}">SÍ</button>
+                            <button onclick="marcar('${p}', 'NO')" class="w-14 py-2 rounded-lg border-2 font-black transition-all ${estado === 'NO' ? 'no-active' : 'bg-white text-slate-200'}">NO</button>
                         </div>
                     </div>`;
             });
@@ -114,18 +130,31 @@
                 fechaManual: fechaFormateada
             }));
 
-            if (payload.some(p => !p.estado)) return alert("MARCA A TODOS");
+            if (payload.some(p => !p.estado)) return alert("⚠️ MARCA A TODOS");
 
-            document.getElementById('btnEnviar').innerText = "GUARDANDO...";
+            const btn = document.getElementById('btnEnviar');
+            btn.innerText = "PROCESANDO...";
+            btn.disabled = true;
+
             try {
                 await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                alert("ACTUALIZADO EN EXCEL");
-                consultarServidor(); // Recargar para confirmar
-            } catch (e) { alert("ERROR"); }
-            document.getElementById('btnEnviar').innerText = "GUARDAR ASISTENCIA / EDITAR";
+                alert("✅ REGISTRO ACTUALIZADO");
+                
+                // Pequeña pausa para asegurar sincronización con Sheets
+                setTimeout(() => {
+                    consultarServidor();
+                    btn.disabled = false;
+                    btn.innerText = "GUARDAR CONSUMO / EDITAR";
+                }, 1000);
+
+            } catch (e) { 
+                alert("❌ ERROR"); 
+                btn.disabled = false;
+                btn.innerText = "GUARDAR CONSUMO / EDITAR";
+            }
         }
 
-        function confirmarEnvio() { if(confirm("¿CONFIRMAS LOS CAMBIOS?")) enviarDatos(); }
+        function confirmarEnvio() { if(confirm("¿CONFIRMAS LOS CAMBIOS EN EL CONSUMO?")) enviarDatos(); }
 
         inicializar();
     </script>
